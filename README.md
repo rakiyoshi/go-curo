@@ -1,2 +1,2 @@
 # go-curo
-Golangで作るソフトウェアルータ
+[Golangで作るソフトウェアルータ](https://techbookfest.org/product/3XvNV4jUJZH1HwNsRxaJdf)

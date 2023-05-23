@@ -3,7 +3,7 @@ name: Lint lib
 on:
   pull_request:
     paths:
-      - **.go
+      - '**.go'
       - .github/workflows/ci.yml
       - go.mod
 

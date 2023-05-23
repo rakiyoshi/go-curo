@@ -14,10 +14,11 @@ var IGNORE_INTERFACES = map[string]struct{}{
 }
 
 type netDevice struct {
-	name       string
-	macaddr    [6]uint8
-	socket     int
-	sockaddr   syscall.SockaddrLinklayer
+	name     string
+	macaddr  [6]uint8
+	socket   int
+	sockaddr syscall.SockaddrLinklayer
+	// nolint: unused
 	etheHeader ethernetHeader
 }
 

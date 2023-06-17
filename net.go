@@ -14,12 +14,19 @@ var IGNORE_INTERFACES = map[string]struct{}{
 }
 
 type netDevice struct {
-	name     string
-	macaddr  [6]uint8
-	socket   int
-	sockaddr syscall.SockaddrLinklayer
-	// nolint: unused
+	name       string
+	macaddr    [6]uint8
+	socket     int
+	sockaddr   syscall.SockaddrLinklayer
 	etheHeader ethernetHeader
+	ipdev      ipDevice
+}
+
+func (netdev netDevice) netDeviceTransmit(data []byte) error {
+	if err := syscall.Sendto(netdev.socket, data, 0, &netdev.sockaddr); err != nil {
+		return fmt.Errorf("failed to transmit netDevice: %w", err)
+	}
+	return nil
 }
 
 // isIgnoreInterfaces returns true when the name of the interface should be ignored.
@@ -48,6 +55,9 @@ func (netdev *netDevice) netDevicePoll(mode string) error {
 	case "ch1":
 		fmt.Printf("Received %d bytes from %s: %x\n", n, netdev.name, recvbuffer[:n])
 	default:
+		if err := ethernetInput(netdev, recvbuffer[:n]); err != nil {
+			return err
+		}
 	}
 
 	return nil

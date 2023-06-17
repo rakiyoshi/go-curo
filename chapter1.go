@@ -75,7 +75,7 @@ func runChapter1() {
 		// wait to receive packet by epoll_wait
 		nfds, err := syscall.EpollWait(epfd, events, -1)
 		if err != nil {
-			log.Fatalf("failedd to EpollWait: %v", err)
+			log.Fatalf("failed to EpollWait: %v", err)
 		}
 		for i := 0; i < nfds; i++ {
 			for _, netdev := range netDeviceList {

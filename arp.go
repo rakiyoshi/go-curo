@@ -130,3 +130,32 @@ func ReceiveARPRequest(netdev *netDevice, arp arpIPToEthernet) error {
 func ReceiveARPReply(netdev *netDevice, arp arpIPToEthernet) {
 
 }
+
+func searchArpTableEntry(ipaddr uint32) ([6]uint8, *netDevice) {
+	for _, arpTable := range ArpTableEntryList {
+		if arpTable.ipAddr == IpAddress(ipaddr) {
+			return arpTable.macAddr, arpTable.netdev
+		}
+	}
+	return [6]uint8{}, nil
+}
+
+func addArpTableEntry(netdev *netDevice, ipaddr uint32, macaddr [6]uint8) {
+	for _, arpTable := range ArpTableEntryList {
+		if arpTable.ipAddr == IpAddress(ipaddr) && arpTable.macAddr != macaddr {
+			arpTable.macAddr = macaddr
+		}
+		if arpTable.macAddr == macaddr && arpTable.ipAddr != IpAddress(ipaddr) {
+			arpTable.ipAddr = IpAddress(ipaddr)
+		}
+		if arpTable.macAddr == macaddr && arpTable.ipAddr == IpAddress(ipaddr) {
+			return
+		}
+	}
+
+	ArpTableEntryList = append(ArpTableEntryList, arpTableEntry{
+		macAddr: macaddr,
+		ipAddr:  IpAddress(ipaddr),
+		netdev:  netdev,
+	})
+}

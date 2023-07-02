@@ -57,10 +57,10 @@ func ethernetInput(netdev *netDevice, packet []byte) error {
 		if err := arpInput(netdev, packet[14:]); err != nil {
 			return fmt.Errorf("failed to input ARP packet: %w", err)
 		}
-		// case ETHER_TYPE_IP:
-		// 	if err := ipInput(netdev, packet[14:]); err != nil {
-		// 		return fmt.Errorf("failed to input IP packet: %w", err)
-		// 	}
+	case ETHER_TYPE_IP:
+		if err := ipInput(netdev, packet[14:]); err != nil {
+			return fmt.Errorf("failed to input IP packet: %w", err)
+		}
 	}
 
 	return nil

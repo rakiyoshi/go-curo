@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 )
 
 const (
@@ -157,4 +158,27 @@ func addArpTableEntry(netdev *netDevice, ipaddr IpAddress, macaddr [6]uint8) {
 		ipAddr:  IpAddress(ipaddr),
 		netdev:  netdev,
 	})
+}
+
+// nolint:unused
+func sendArpRequest(netdev *netDevice, targetip IpAddress) error {
+	log.Printf("Sending arp request via %s for %x", netdev.name, targetip)
+
+	arpPacket := arpIPToEthernet{
+		hardwareType:       ARP_HTYPE_ETHERNET,
+		protocolType:       ETHER_TYPE_IP,
+		hardwareLen:        ETHERNET_ADDRESS_LEN,
+		protocolLen:        IP_ADDRESS_LEN,
+		opcode:             ARP_OPERATION_CODE_REQUEST,
+		senderHardwareAddr: netdev.macaddr,
+		senderIPAddr:       netdev.ipdev.address,
+		targetHardwareAddr: ETHERNET_ADDERSS_BROADCAST,
+		targetIPAddr:       targetip,
+	}.ToPacket()
+
+	if err := ethernetOutput(netdev, ETHERNET_ADDERSS_BROADCAST, arpPacket, ETHER_TYPE_ARP); err != nil {
+		return fmt.Errorf("failed to send ethernet packet: %w", err)
+	}
+
+	return nil
 }

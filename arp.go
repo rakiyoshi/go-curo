@@ -68,12 +68,12 @@ func arpInput(netdev *netDevice, packet []byte) error {
 	}
 
 	if arpMsg.protocolType != ETHER_TYPE_IP {
-		return fmt.Errorf("invalid protocol type: %d", arpMsg.protocolType)
+		return fmt.Errorf("unexpected protocol type: %d", arpMsg.protocolType)
 	}
 	if arpMsg.hardwareLen != ETHERNET_ADDRESS_LEN {
 		return fmt.Errorf("invalid hardware address length: %d", arpMsg.hardwareLen)
 	}
-	if arpMsg.protocolLen != IP_ADDRESS_LEN {
+	if arpMsg.protocolLen != IpAddressLen {
 		return fmt.Errorf("invalid protocol address length: %d", arpMsg.protocolLen)
 	}
 
@@ -104,7 +104,8 @@ func getArpTableEntry(ipAddr IpAddress) ([6]uint8, *netDevice) {
 // ReceiveARPRequest receives the ARP request packet
 func ReceiveARPRequest(netdev *netDevice, arp arpIPToEthernet) error {
 	if netdev.ipdev.address == 0 || netdev.ipdev.address != arp.targetIPAddr {
-		return fmt.Errorf("invalid address: %s", netdev.ipdev.address)
+		log.Printf("invalid address: %s", netdev.ipdev.address)
+		return nil
 	}
 
 	fmt.Printf("Sending ARP reply to %s\n", arp.targetIPAddr)
@@ -112,7 +113,7 @@ func ReceiveARPRequest(netdev *netDevice, arp arpIPToEthernet) error {
 		hardwareType:       ARP_HTYPE_ETHERNET,
 		protocolType:       ETHER_TYPE_IP,
 		hardwareLen:        ETHERNET_ADDRESS_LEN,
-		protocolLen:        IP_ADDRESS_LEN,
+		protocolLen:        IpAddressLen,
 		opcode:             ARP_OPERATION_CODE_REPLY,
 		senderHardwareAddr: netdev.macaddr,
 		senderIPAddr:       netdev.ipdev.address,
@@ -168,7 +169,7 @@ func sendArpRequest(netdev *netDevice, targetip IpAddress) error {
 		hardwareType:       ARP_HTYPE_ETHERNET,
 		protocolType:       ETHER_TYPE_IP,
 		hardwareLen:        ETHERNET_ADDRESS_LEN,
-		protocolLen:        IP_ADDRESS_LEN,
+		protocolLen:        IpAddressLen,
 		opcode:             ARP_OPERATION_CODE_REQUEST,
 		senderHardwareAddr: netdev.macaddr,
 		senderIPAddr:       netdev.ipdev.address,

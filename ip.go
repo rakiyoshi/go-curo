@@ -4,14 +4,20 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net"
+	"strings"
 )
 
-const IP_ADDRESS_LEN = 4
-const IP_ADDRESS_LIMITED_BROADCAST IpAddress = 0xffffffff
+const IpAddressLen = 4
+const IpAddressLimitedBroadcast IpAddress = 0xffffffff
 const (
-	IP_PROTOCOL_NUM_ICMP uint8 = 0x01
-	IP_PROTOCOL_NUM_TCP  uint8 = 0x06
-	IP_PROTOCOL_NUM_UDP  uint8 = 0x11
+	IpProtocolNumICMP uint8 = 0x01
+	IpProtocolNumTCP  uint8 = 0x06
+	IpProtocolNumUDP  uint8 = 0x11
+)
+const (
+	IpRouteTypeConnected ipRouteType = iota
+	IpRouteTypeNetwork
 )
 
 type IpAddress uint32
@@ -37,6 +43,14 @@ type ipHeader struct {
 	srcAddr        IpAddress
 	destAddr       IpAddress
 }
+
+type ipRouteEntry struct {
+	iptype  ipRouteType
+	netdev  *netDevice
+	nexthop uint32
+}
+
+type ipRouteType uint8
 
 func (i ipHeader) ToPacket(calc bool) (ipHeaderByte []byte) {
 	var b bytes.Buffer
@@ -65,6 +79,35 @@ func (i ipHeader) ToPacket(calc bool) (ipHeaderByte []byte) {
 func printIPAddr(ip uint32) string {
 	ipbyte := uint32ToBytes(ip)
 	return fmt.Sprintf("%d.%d.%d.%d", ipbyte[0], ipbyte[1], ipbyte[2], ipbyte[3])
+}
+
+// Convert to prefix length from netmask
+// example: 0xffffff00 -> 24
+func subnetToPrefixLen(netmask uint32) (prefixLen uint32) {
+	for ; prefixLen < 32; prefixLen++ {
+		if netmask>>(31-prefixLen)&1 == 0 {
+			break
+		}
+	}
+	return
+}
+
+func getIPDevice(addrs []net.Addr) (*ipDevice, error) {
+	ipdev := &ipDevice{}
+	for _, addr := range addrs {
+		ipaddrstr := addr.String()
+		if strings.Contains(ipaddrstr, ":") || strings.Contains(ipaddrstr, ".") {
+			continue
+		}
+		ip, ipnet, err := net.ParseCIDR(ipaddrstr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to pase CIDR: %w", err)
+		}
+		ipdev.address = IpAddress(byteToUint32(ip.To4()))
+		ipdev.netmask = byteToUint32(ipnet.Mask)
+		ipdev.broadcast = IpAddress(uint32(ipdev.address) | (^ipdev.netmask))
+	}
+	return ipdev, nil
 }
 
 func (i IpAddress) String() string {
@@ -120,7 +163,7 @@ func ipInput(inputdev *netDevice, packet []byte) error {
 		return fmt.Errorf("IP header option is not supported")
 	}
 
-	if ipheader.destAddr == IP_ADDRESS_LIMITED_BROADCAST || inputdev.ipdev.address == ipheader.destAddr {
+	if ipheader.destAddr == IpAddressLimitedBroadcast || inputdev.ipdev.address == ipheader.destAddr {
 		// handle message as this post is destination
 		return ipInputToOurs(inputdev, &ipheader, packet[20:])
 	}
@@ -138,11 +181,11 @@ func ipInputToOurs(inputdev *netDevice, ipheader *ipHeader, packet []byte) error
 	// TODO: implement NAT
 
 	switch ipheader.protocol {
-	case IP_PROTOCOL_NUM_ICMP:
+	case IpProtocolNumICMP:
 		fmt.Println("ICMP received")
-	case IP_PROTOCOL_NUM_TCP:
+	case IpProtocolNumTCP:
 		fmt.Println("TCP received")
-	case IP_PROTOCOL_NUM_UDP:
+	case IpProtocolNumUDP:
 		fmt.Println("UDP received")
 	default:
 		return fmt.Errorf("Unsupported IP protocol: %d", ipheader.protocol)

@@ -21,3 +21,18 @@ func uint32ToBytes(i uint32) []byte {
 	binary.BigEndian.PutUint32(b, i)
 	return b
 }
+
+func sumByteArr(packet []byte) (sum uint) {
+	for i := range packet {
+		if i%2 == 0 {
+			sum += uint(byteToUint16(packet[i:]))
+		}
+	}
+	return sum
+}
+
+func calcCechksum(packet []byte) []byte {
+	sum := sumByteArr(packet)
+	sum = (sum & 0xffff) + sum>>16
+	return uint16ToBytes(uint16(sum ^ 0xffff))
+}

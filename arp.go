@@ -27,7 +27,6 @@ type arpIPToEthernet struct {
 	targetIPAddr       IpAddress // target IP address
 }
 
-// nolint unused
 type arpTableEntry struct {
 	macAddr [6]uint8
 	ipAddr  IpAddress
@@ -131,7 +130,7 @@ func ReceiveARPReply(netdev *netDevice, arp arpIPToEthernet) {
 
 }
 
-func searchArpTableEntry(ipaddr uint32) ([6]uint8, *netDevice) {
+func searchArpTableEntry(ipaddr IpAddress) ([6]uint8, *netDevice) {
 	for _, arpTable := range ArpTableEntryList {
 		if arpTable.ipAddr == IpAddress(ipaddr) {
 			return arpTable.macAddr, arpTable.netdev
@@ -140,7 +139,7 @@ func searchArpTableEntry(ipaddr uint32) ([6]uint8, *netDevice) {
 	return [6]uint8{}, nil
 }
 
-func addArpTableEntry(netdev *netDevice, ipaddr uint32, macaddr [6]uint8) {
+func addArpTableEntry(netdev *netDevice, ipaddr IpAddress, macaddr [6]uint8) {
 	for _, arpTable := range ArpTableEntryList {
 		if arpTable.ipAddr == IpAddress(ipaddr) && arpTable.macAddr != macaddr {
 			arpTable.macAddr = macaddr

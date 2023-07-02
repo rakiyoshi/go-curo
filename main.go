@@ -10,6 +10,8 @@ func main() {
 	switch mode {
 	case "ch1":
 		runChapter1()
+	case "ch2":
+		runChapter2()
 	default:
 	}
 }

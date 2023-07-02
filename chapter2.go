@@ -1,18 +1,25 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"syscall"
 )
 
-func runChapter1() {
-	var netDeviceList []netDevice
+var netDeviceList []*netDevice
+var iproute radixTreeNode
 
-	events := make([]syscall.EpollEvent, 10)
+func runChapter2() {
+	// register route to host2
+	routeEntryToHost2 := ipRouteEntry{
+		iptype:  IpRouteTypeNetwork,
+		nexthop: 0xc0a80002,
+	}
+	// register entry route to 192.168.2.0/24
+	iproute.radixTreeAdd(0xc0a80202&0xffffff00, 24, routeEntryToHost2)
 
 	// create epoll
+	events := make([]syscall.EpollEvent, 10)
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
 		log.Fatalf("epoll create err: %v", err)
@@ -44,7 +51,7 @@ func runChapter1() {
 			log.Fatalf("failed to bind the interface to the socket: %v", err)
 		}
 
-		fmt.Printf("Created device %s socket %d address %s\n",
+		log.Printf("Created device %s socket %d address %s",
 			netif.Name,
 			sock,
 			netif.HardwareAddr.String(),
@@ -58,35 +65,52 @@ func runChapter1() {
 			log.Fatalf("failed to epoll ctrl: %v", err)
 		}
 
-		// set non block
-		// if err := syscall.SetNonblock(sock, true); err != nil {
-		// 	log.Fatalf("failed to set non block: %v", err)
-		// }
+		netaddrs, err := netif.Addrs()
+		if err != nil {
+			log.Fatalf("failed to get IP address from NIC interface: %v", err)
+		}
 
-		netDeviceList = append(netDeviceList, netDevice{
+		ipdev, err := getIPDevice(netaddrs)
+		if err != nil {
+			log.Fatalf("failed to get IP address from NIC interface: %v", err)
+		}
+		netdev := netDevice{
 			name:     netif.Name,
 			macaddr:  setMacAddr(netif.HardwareAddr),
 			socket:   sock,
 			sockaddr: addr,
-		})
+			ipdev:    *ipdev,
+		}
+
+		routeEntry := ipRouteEntry{
+			iptype: IpRouteTypeConnected,
+			netdev: &netdev,
+		}
+		prefixLen := subnetToPrefixLen(netdev.ipdev.netmask)
+		prefixIpAddr := uint32(netdev.ipdev.address) & netdev.ipdev.netmask
+		iproute.radixTreeAdd(prefixIpAddr, prefixLen, routeEntry)
+		log.Printf("Set directly connected route %s (%d via %s)",
+			printIPAddr(prefixIpAddr), prefixLen, netdev.name,
+		)
+
+		netDeviceList = append(netDeviceList, &netdev)
 	}
 
 	for {
-		// wait to receive packet by epoll_wait
 		nfds, err := syscall.EpollWait(epfd, events, -1)
 		if err != nil {
 			log.Fatalf("failed to EpollWait: %v", err)
 		}
 		for i := 0; i < nfds; i++ {
+
 			for _, netdev := range netDeviceList {
 				if events[i].Fd != int32(netdev.socket) {
 					continue
 				}
-				if err := netdev.netDevicePoll("ch1"); err != nil {
-					log.Fatal(err)
+				if err := netdev.netDevicePoll("ch2"); err != nil {
+					log.Fatalf("failed to net device poll: %v", err)
 				}
 			}
 		}
 	}
-
 }
